@@ -172,3 +172,10 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
+
+func getLogout(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "auth")
+	session.Values["loggedin"] = false
+	session.Save(r, w)
+	w.Write([]byte("Successfully logged out."))
+}
