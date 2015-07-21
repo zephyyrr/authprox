@@ -1,6 +1,32 @@
 package main
 
-const loginPage = `<html>
+type Pages interface {
+	Fetch(page string) []byte
+}
+
+const (
+	LoginPage               = "login"
+	LoginSuccessPage        = "login/success"
+	RegistrationPage        = "register"
+	RegistrationSuccessPage = "register/success"
+	LogoutPage              = "logout"
+	AdminPage               = "admin"
+)
+
+type ConstPages map[string][]byte
+
+var constPages = make(ConstPages)
+
+func (cp ConstPages) Fetch(page string) []byte {
+	if data, ok := cp[page]; ok {
+		return data
+	} else {
+		return cp["empty"]
+	}
+}
+
+func init() {
+	constPages[LoginPage] = []byte(`<html>
 <head>
 	<title>AuthProx - Login</title>
 </head>
@@ -13,9 +39,9 @@ const loginPage = `<html>
 		<input type="submit" value="Login">
 	</form>
 </body>
-</html>`
+</html>`)
 
-const loginSuccessPage = `<html>
+	constPages[LoginSuccessPage] = []byte(`<html>
 <head>
 	<title>AuthProx - Login</title>
 </head>
@@ -25,9 +51,9 @@ const loginSuccessPage = `<html>
 	You have successfully logged in.
 	<a href="/">Continue</a>
 </body>
-</html>`
+</html>`)
 
-const registrationPage = `<html>
+	constPages[RegistrationPage] = []byte(`<html>
 <head>
 	<title>AuthProx - Register</title>
 	<script src='https://www.google.com/recaptcha/api.js'></script>
@@ -42,9 +68,9 @@ const registrationPage = `<html>
 		<input type="submit" value="Register">
 	</form>
 </body>
-</html>`
+</html>`)
 
-const registrationSuccessPage = `<html>
+	constPages[RegistrationSuccessPage] = []byte(`<html>
 <head>
 	<title>AuthProx - Login</title>
 </head>
@@ -54,4 +80,5 @@ const registrationSuccessPage = `<html>
 	You have successfully registered your new account.
 	<a href="/proxy/login">Continue to login page</a>
 </body>
-</html>`
+</html>`)
+}
