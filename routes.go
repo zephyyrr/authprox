@@ -15,12 +15,14 @@ const (
 )
 
 var (
-	pages Pages
-	store sessions.Store
+	pages    Pages
+	renderer Renderer
+	store    sessions.Store
 )
 
 func init() {
 	pages = constPages
+	renderer = defaultRenderer
 }
 
 func setupHandlers() http.Handler {
@@ -108,17 +110,13 @@ func getLogin(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "auth")
 	if loggedin, ok := session.Values["loggedin"].(bool); ok && loggedin {
 		//Already logged in, so redirect to mainpage.
-		logger.WithFields(logrus.Fields{
-			"method":   r.Method,
-			"url":      r.URL,
-			"client":   r.RemoteAddr,
-			"redirect": "/",
-			"status":   http.StatusTemporaryRedirect,
-		}).Info("Client already logged in.")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		renderer.Render(w, Page{
+			Title:   "Already Logged in",
+			Content: "You are already logged in!",
+		})
 		return
 	}
-	w.Write(pages.Fetch(LoginPage)) //Not logged in. Serve login page
+	renderer.Render(w, pages.Get(LoginPage)) //Not logged in. Serve login page
 }
 
 func postLogin(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +133,7 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 			"client": r.RemoteAddr,
 			"user":   r.PostFormValue("username"),
 		}).Info("Client logged in.")
-		w.Write(pages.Fetch(LoginSuccessPage))
+		renderer.Render(w, pages.Get(LoginSuccessPage))
 	} else {
 		logger.WithFields(logrus.Fields{
 			"method": r.Method,
@@ -143,14 +141,14 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 			"client": r.RemoteAddr,
 			"user":   r.PostFormValue("username"),
 		}).Info("Client failed to logged in.")
-		w.Write(pages.Fetch(LoginPage))
+		renderer.Render(w, pages.Get(LoginPage))
 	}
 }
 
 func getRegister(w http.ResponseWriter, r *http.Request) {
 	//If they are logged in and want to register again, then fine.
 	//Can add measures against this if it becomes and issue.
-	w.Write(pages.Fetch(RegistrationPage)) //Serve register page
+	renderer.Render(w, pages.Get(RegistrationPage)) //Serve register page
 }
 
 func postRegister(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +173,7 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 			"client": r.RemoteAddr,
 			"user":   username,
 		}).Info("User registration")
-		w.Write(pages.Fetch(RegistrationSuccessPage))
+		renderer.Render(w, pages.Get(RegistrationSuccessPage))
 	case ErrUserExists:
 		http.Error(w, "The user already exists. Please try again with a different username.", http.StatusPreconditionFailed)
 	default:
@@ -187,5 +185,5 @@ func getLogout(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "auth")
 	session.Values["loggedin"] = false
 	session.Save(r, w)
-	w.Write([]byte("Successfully logged out."))
+	renderer.Render(w, pages.Get(LogoutPage))
 }
