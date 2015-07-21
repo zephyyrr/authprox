@@ -14,37 +14,29 @@ const (
 )
 
 var (
-	store    sessions.Store
-	revProxy *httputil.ReverseProxy
+	store sessions.Store
 )
 
 func setupHandlers() http.Handler {
 	store = sessions.NewCookieStore(config.Keys.AuthenticationKey, config.Keys.EncryptionKey)
 	muxer := mux.NewRouter()
-	w := logger.Writer()
-	//FIXME Should somehow close w. Go routine listening to channel closed at end of program?
-	revProxy = &httputil.ReverseProxy{
-		Director: func(r *http.Request) {
-			r.URL.Scheme = "http"
-			r.URL.Host = config.Destination
-		},
-		ErrorLog: log.New(w, "", 0),
-	}
 
 	muxer.Handle("/", LoggingMiddleware{http.HandlerFunc(mainHandler)})
-	muxer.Handle("/{x}", LoggingMiddleware{http.HandlerFunc(mainHandler)}) //Both are necessary.
+	muxer.Handle("/{x:.*}", LoggingMiddleware{http.HandlerFunc(mainHandler)}) //Both are necessary.
 
 	proxymux := muxer.PathPrefix("/proxy").Subrouter()
-	proxymux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	proxymux.Handle("/", LoggingMiddleware{http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("AuthProx - Menu"))
-	})
+	})})
 
-	{
+	{ // GET handlers
 		m := proxymux.Methods("GET").Subrouter()
 		m.PathPrefix("/login").Handler(LoggingMiddleware{http.HandlerFunc(getLogin)})
 		m.PathPrefix("/register").Handler(LoggingMiddleware{http.HandlerFunc(getRegister)})
+		m.PathPrefix("/logout").Handler(LoggingMiddleware{http.HandlerFunc(getLogout)})
 	}
-	{
+
+	{ // POST handlers
 		m := proxymux.Methods("POST").Subrouter()
 		m.PathPrefix("/login").Handler(LoggingMiddleware{http.HandlerFunc(postLogin)})
 		m.PathPrefix("/register").Handler(LoggingMiddleware{http.HandlerFunc(postRegister)})
@@ -68,7 +60,6 @@ func (lm LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "auth")
-
 	if loggedin, ok := session.Values["loggedin"].(bool); !(ok && loggedin) {
 		if isWebsocket(r) {
 			http.Error(w, "You need to login first.", http.StatusUnauthorized)
@@ -87,6 +78,18 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 		p := websocketProxy{}
 		p.ServeHTTP(w, r)
 		return
+	}
+
+	wlogger := logger.Writer()
+	defer wlogger.Close()
+
+	revProxy := &httputil.ReverseProxy{
+		Director: func(r *http.Request) {
+			r.URL.Scheme = "http"
+			r.URL.Host = config.Destination
+			logger.WithField("path", r.URL.Path).Debug("Directing reverse-proxy")
+		},
+		ErrorLog: log.New(wlogger, "", 0),
 	}
 	revProxy.ServeHTTP(w, r)
 }
