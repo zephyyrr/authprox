@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 )
 
 const (
@@ -14,15 +15,20 @@ const (
 )
 
 var (
+	pages Pages
 	store sessions.Store
 )
+
+func init() {
+	pages = constPages
+}
 
 func setupHandlers() http.Handler {
 	store = sessions.NewCookieStore(config.Keys.AuthenticationKey, config.Keys.EncryptionKey)
 	muxer := mux.NewRouter()
 
 	muxer.Handle("/", LoggingMiddleware{http.HandlerFunc(mainHandler)})
-	muxer.Handle("/{x:.*}", LoggingMiddleware{http.HandlerFunc(mainHandler)}) //Both are necessary.
+	muxer.MatcherFunc(wildcard).Handler(LoggingMiddleware{http.HandlerFunc(mainHandler)}) //Both are necessary.
 
 	proxymux := muxer.PathPrefix("/proxy").Subrouter()
 	proxymux.Handle("/", LoggingMiddleware{http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +49,10 @@ func setupHandlers() http.Handler {
 	}
 
 	return muxer
+}
+
+func wildcard(r *http.Request, rm *mux.RouteMatch) bool {
+	return !strings.HasPrefix(r.URL.Path, "/proxy/")
 }
 
 type LoggingMiddleware struct {
@@ -108,7 +118,7 @@ func getLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	w.Write([]byte(loginPage)) //Not logged in. Serve login page
+	w.Write(pages.Fetch(LoginPage)) //Not logged in. Serve login page
 }
 
 func postLogin(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +135,7 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 			"client": r.RemoteAddr,
 			"user":   r.PostFormValue("username"),
 		}).Info("Client logged in.")
-		w.Write([]byte(loginSuccessPage))
+		w.Write(pages.Fetch(LoginSuccessPage))
 	} else {
 		logger.WithFields(logrus.Fields{
 			"method": r.Method,
@@ -133,14 +143,14 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 			"client": r.RemoteAddr,
 			"user":   r.PostFormValue("username"),
 		}).Info("Client failed to logged in.")
-		w.Write([]byte(loginPage))
+		w.Write(pages.Fetch(LoginPage))
 	}
 }
 
 func getRegister(w http.ResponseWriter, r *http.Request) {
 	//If they are logged in and want to register again, then fine.
 	//Can add measures against this if it becomes and issue.
-	w.Write([]byte(registrationPage)) //Serve register page
+	w.Write(pages.Fetch(RegistrationPage)) //Serve register page
 }
 
 func postRegister(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +175,7 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 			"client": r.RemoteAddr,
 			"user":   username,
 		}).Info("User registration")
-		w.Write([]byte(registrationSuccessPage))
+		w.Write(pages.Fetch(RegistrationSuccessPage))
 	case ErrUserExists:
 		http.Error(w, "The user already exists. Please try again with a different username.", http.StatusPreconditionFailed)
 	default:
