@@ -40,7 +40,7 @@ const (
 )
 
 type Page struct {
-	Title   string
+	Title   template.HTML
 	Head    template.HTML
 	Content template.HTML
 }
@@ -54,9 +54,12 @@ func (cp ConstPages) Get(name string) Page {
 		return page
 	} else {
 		return Page{
-			Title:   "/dev/nil",
+			Title:   "<code>/dev/nil</code>",
 			Head:    "",
-			Content: "You appear to have tried to access a page that does not exist.",
+			Content: `
+	<p>
+		You appear to have tried to access a page that does not exist.
+	</p>`,
 		}
 	}
 }
@@ -64,12 +67,17 @@ func (cp ConstPages) Get(name string) Page {
 const pageTemplate = `<html>
 <head>
 	<title>AuthProx - {{.Title}}</title>
+	<link rel="stylesheet" href="/proxy/static/master.css" media="screen" charset="utf-8">
+	<link href='http://fonts.googleapis.com/css?family=Roboto+Condensed' rel='stylesheet' type='text/css'>
 	{{.Head}}
 </head>
 
 <body>
-	<h1>AuthProx - {{.Title}}</h1>
-	{{.Content}}
+	<div id="card">
+		<h3>AuthProx</h3>
+		<h1>{{.Title}}</h1>
+		{{.Content}}
+	</div>
 </body>
 </html>
 `
@@ -79,8 +87,8 @@ func init() {
 		Title: "Login",
 		Content: `
 	<form method="POST" action="/proxy/login">
-		<input type="text" name="username" placeholder="Username">
-		<input type="password" name="password" placeholder="Password"> 
+		<input type="text" name="username" placeholder="Username" required>
+		<input type="password" name="password" placeholder="Password" required>
 		<input type="submit" value="Login">
 	</form>`,
 	}
@@ -88,8 +96,10 @@ func init() {
 	constPages[LoginSuccessPage] = Page{
 		Title: "Login Success!",
 		Content: `
-	You have successfully logged in.
-	<a href="/">Continue</a>`,
+	<p>
+		You have successfully logged in.
+		<a href="/">Continue</a>
+	</p>`,
 	}
 
 	constPages[RegistrationPage] = Page{
@@ -97,8 +107,8 @@ func init() {
 		Head:  "<script src='https://www.google.com/recaptcha/api.js'></script>",
 		Content: `
 	<form method="POST" action="/proxy/register">
-		<input type="text" name="username" placeholder="Username">
-		<input type="password" name="password" placeholder="Password">
+		<input type="text" name="username" placeholder="Username" required>
+		<input type="password" name="password" placeholder="Password" required>
 		<div class="g-recaptcha" data-sitekey="6LcMDgoTAAAAALJTFmdzPieTUheKAdghSG9q1_D-"></div>
 		<input type="submit" value="Register">
 	</form>`,
@@ -107,8 +117,10 @@ func init() {
 	constPages[RegistrationSuccessPage] = Page{
 		Title: "Registration Successfull!",
 		Content: `
-	You have successfully registered your new account.
-	<a href="/proxy/login">Continue to login page</a>`,
+	<p>
+		You have successfully registered your new account.
+		<a href="/proxy/login">Continue to login page</a>
+	</p>`,
 	}
 
 	constPages[LogoutPage] = Page{

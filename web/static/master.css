@@ -1,0 +1,98 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+html {
+  background-color: #eee;
+  background-image: url(http://www.kbkompaniet.org/wp-content/uploads/2013/04/2015-04-01_11.38.04.png);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  font-family: 'Roboto Condensed', 'Anadale Mono', sans-serif;
+}
+
+#card, #card input {
+  background-color: white;
+  border: solid 1px #ddd;
+  border-radius: 2px;
+  font-size: 15px;
+}
+
+#card p {
+  font-size: 17px;
+}
+
+#card a {
+  color: #4B8D4B;
+  position: relative;
+}
+
+#card a:focus::before {
+  background-color: #EEF3E2;
+  border-radius: 2px;
+  bottom: -4px;
+  content: ' ';
+  left: -4px;
+  margin: auto;
+  padding: 4px;
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  z-index: -1;
+}
+
+input, input[type=submit] {
+  padding: 10px;
+}
+
+#card input[type=submit] {
+  cursor: pointer;
+  background-color: #EEF3E2;
+}
+
+@media (max-width: 500px) {
+  input {
+    width: 100%;
+  }
+}
+
+@media (min-width: 501px) {
+  form {
+    overflow: auto;
+  }
+  input {
+    width: 50%;
+    float: left;
+  }
+
+  input[type=submit] {
+    float: right;
+  }
+}
+
+#card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  min-width: 320px;
+  width: 50%;
+  padding: 30px;
+  max-height: 300px;
+  box-shadow: 0 5px 20px #555;
+}
+
+#card > h1 {
+  text-align: center;
+  margin-top: 10px;
+}
+
+#card > h3 {
+  color: gray;
+  margin: 0;
+}
