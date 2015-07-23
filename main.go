@@ -51,6 +51,7 @@ func main() {
 		users = &DummyUserManager{
 			Name:     usr_data[0],
 			Passhash: HashAndSalt(usr_data[1], Key{1}),
+			Admin:    true,
 			Salt:     Key{1},
 		}
 	case "bolt":

@@ -167,10 +167,15 @@ func (bum BoltUserManager) Register(user, password string) (err error) {
 		}
 		b := tx.Bucket(BoltBucketUsers)
 		salt := securecookie.GenerateRandomKey(32)
+		isFirst := false
+		if b.Stats().KeyN == 0 {
+			isFirst = true
+		}
 		err := b.Put([]byte(user), bum.encodeUser(User{
 			Name:     user,
 			Passhash: HashAndSalt(password, salt),
 			Salt:     salt,
+			Admin:    isFirst,
 		}))
 		return err
 	})
