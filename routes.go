@@ -29,7 +29,12 @@ func setupHandlers() http.Handler {
 	store = sessions.NewCookieStore(config.Keys.AuthenticationKey, config.Keys.EncryptionKey)
 	muxer := mux.NewRouter()
 
-	muxer.Handle("/", LoggingMiddleware{http.HandlerFunc(mainHandler)})
+	muxer.Handle("/", LoggingMiddleware{http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if config.RootRedirect != nil {
+			http.Redirect(w, r, *config.RootRedirect, http.StatusMovedPermanently)
+		}
+		mainHandler(w, r)
+	})})
 	muxer.MatcherFunc(wildcard).Handler(LoggingMiddleware{http.HandlerFunc(mainHandler)}) //Both are necessary.
 
 	proxymux := muxer.PathPrefix("/proxy").Subrouter()

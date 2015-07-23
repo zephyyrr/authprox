@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	Address     string
-	Destination string
-	Logfile     string
-	Keys        struct {
+	Address      string
+	Destination  string
+	Logfile      string
+	RootRedirect *string
+	Keys         struct {
 		AuthenticationKey Key
 		EncryptionKey     Key
 		ReCaptcha         string
