@@ -30,6 +30,7 @@ type Pages interface {
 }
 
 const (
+	MainMenuPage            = "menu"
 	LoginPage               = "login"
 	LoginSuccessPage        = "login/success"
 	RegistrationPage        = "register"
