@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"regexp"
 	"strings"
 )
 
@@ -29,30 +30,41 @@ func setupHandlers() http.Handler {
 	store = sessions.NewCookieStore(config.Keys.AuthenticationKey, config.Keys.EncryptionKey)
 	muxer := mux.NewRouter()
 
-	muxer.Handle("/", LoggingMiddleware{http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	muxer.Handle("/", LoggingMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if config.RootRedirect != nil {
 			http.Redirect(w, r, *config.RootRedirect, http.StatusMovedPermanently)
 		}
 		mainHandler(w, r)
-	})})
-	muxer.MatcherFunc(wildcard).Handler(LoggingMiddleware{http.HandlerFunc(mainHandler)}) //Both are necessary.
+	})))
+	muxer.MatcherFunc(wildcard).Handler(LoggingMiddleware{
+		Wrapped: http.HandlerFunc(mainHandler),
+		Message: "HTTP Proxied",
+	}) //Both are necessary.
 
 	proxymux := muxer.PathPrefix("/proxy").Subrouter()
-	proxymux.Handle("/", LoggingMiddleware{http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("AuthProx - Menu"))
-	})})
+	proxymux.Handle("/", LoggingMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		renderer.Render(w, pages.Get(MainMenuPage))
+	})))
 
 	{ // GET handlers
 		m := proxymux.Methods("GET").Subrouter()
-		m.PathPrefix("/login").Handler(LoggingMiddleware{http.HandlerFunc(getLogin)})
-		m.PathPrefix("/register").Handler(LoggingMiddleware{http.HandlerFunc(getRegister)})
-		m.PathPrefix("/logout").Handler(LoggingMiddleware{http.HandlerFunc(getLogout)})
+		m.PathPrefix("/login").Handler(LoggingMW(http.HandlerFunc(getLogin)))
+		m.PathPrefix("/register").Handler(LoggingMW(http.HandlerFunc(getRegister)))
+		m.PathPrefix("/logout").Handler(LoggingMW(http.HandlerFunc(getLogout)))
+		if config.StaticResources != nil { //Only put up this route if we have static content. Could all be served from CDN or similar.
+			m.PathPrefix("/static").Handler(LoggingMW(CacheMW{RewriteMW{
+				Wrapped: http.FileServer(http.Dir(*config.StaticResources)),
+				From:    "/proxy/static/(.*)",
+				To:      "/$1",
+			}}))
+			logger.WithField("dir", *config.StaticResources).Info("Static route setup.")
+		}
 	}
 
 	{ // POST handlers
 		m := proxymux.Methods("POST").Subrouter()
-		m.PathPrefix("/login").Handler(LoggingMiddleware{http.HandlerFunc(postLogin)})
-		m.PathPrefix("/register").Handler(LoggingMiddleware{http.HandlerFunc(postRegister)})
+		m.PathPrefix("/login").Handler(LoggingMW(http.HandlerFunc(postLogin)))
+		m.PathPrefix("/register").Handler(LoggingMW(http.HandlerFunc(postRegister)))
 	}
 
 	return muxer
@@ -62,7 +74,22 @@ func wildcard(r *http.Request, rm *mux.RouteMatch) bool {
 	return !strings.HasPrefix(r.URL.Path, "/proxy/")
 }
 
+type CacheMW struct{ Wrapped http.Handler }
+
+func (c CacheMW) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "public,max-age:360000")
+	c.Wrapped.ServeHTTP(w, r)
+}
+
+func LoggingMW(h http.Handler) http.Handler {
+	return LoggingMiddleware{
+		Message: "HTTP Request",
+		Wrapped: h,
+	}
+}
+
 type LoggingMiddleware struct {
+	Message string
 	Wrapped http.Handler
 }
 
@@ -71,8 +98,27 @@ func (lm LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"method": r.Method,
 		"url":    r.URL,
 		"client": r.RemoteAddr,
-	}).Info("HTTP Request")
+	}).Info(lm.Message)
 	lm.Wrapped.ServeHTTP(w, r)
+}
+
+type RewriteMW struct {
+	Wrapped http.Handler
+	From    string
+	To      string
+	exp     *regexp.Regexp
+}
+
+func (rw RewriteMW) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if rw.exp == nil {
+		var err error
+		rw.exp, err = regexp.Compile(rw.From)
+		if err != nil {
+			logger.WithField("from", rw.From).Fatal("Error compiling Rewrite rule.")
+		}
+	}
+	r.URL.Path = string(rw.exp.ReplaceAll([]byte(r.URL.Path), []byte(rw.To)))
+	rw.Wrapped.ServeHTTP(w, r)
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
