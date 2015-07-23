@@ -42,7 +42,7 @@ var (
 type DummyUserManager User
 
 func (d DummyUserManager) Authenticate(user, password string) bool {
-	if user == d.Name && sameBytes(HashAndSalt(password, d.Salt), d.Passhash) {
+	if user == d.Name && bytes.Compare(HashAndSalt(password, d.Salt), d.Passhash) == 0 {
 		return true
 	}
 	return false
@@ -80,7 +80,7 @@ func (um JsonUserManager) Authenticate(username, password string) (authenticated
 		return false
 	}
 	hashsum := HashAndSalt(password, user.Salt)
-	if sameBytes(user.Passhash, hashsum) { //Compare to stored hash
+	if bytes.Compare(user.Passhash, hashsum) == 0 { //Compare to stored hash
 		authenticated = true
 	}
 	return
@@ -93,23 +93,6 @@ func HashAndSalt(password string, salt []byte) []byte {
 	hasher.Write([]byte(password))
 	hasher.Write(salt)                              // Add a dash of salt for good flavour (and practice)
 	return hasher.Sum(make([]byte, 0, sha512.Size)) //Calculate sum
-}
-
-// sameBytes performs a deep comparison of two slices of bytes.
-// It attempts to take the same time to execute regardless of result.
-// It returns true if the lengths and contents of the slices are equal.
-// False otherwise.
-func sameBytes(a, b []byte) (res bool) {
-	if len(a) != len(b) {
-		return false
-	}
-	res = true
-	for i := 0; i < len(a); i++ {
-		if a[i] != b[i] {
-			res = false
-		}
-	}
-	return
 }
 
 func init() {
@@ -151,7 +134,7 @@ func (bum BoltUserManager) Authenticate(username, password string) bool {
 			return err
 		}
 		hash := HashAndSalt(password, user.Salt)
-		if !sameBytes(hash, user.Passhash) {
+		if bytes.Compare(hash, user.Passhash) != 0 {
 			return ErrWrongPassword
 		}
 		return nil
