@@ -1,0 +1,9 @@
+Title = "Registrations"
+Head =  "<script src='https://www.google.com/recaptcha/api.js'></script>"
+Content = """
+	<form method="POST" action="/proxy/register">
+		<input type="text" name="username" placeholder="Username" required>
+		<input type="password" name="password" placeholder="Password" required>
+		<div class="g-recaptcha" data-sitekey="6LcMDgoTAAAAALJTFmdzPieTUheKAdghSG9q1_D-"></div>
+		<input type="submit" value="Register">
+	</form>"""

@@ -1,0 +1,6 @@
+Title = "Login Success!"
+Content = """
+	<p>
+		You have successfully logged in.
+		<a href="/">Continue</a>
+	</p>"""

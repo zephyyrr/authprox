@@ -1,0 +1,8 @@
+Title = "Logout Successfull"
+Content = """
+	<p>
+		You have successfully been logged out.
+	</p>
+	<p>
+		Please return at a later time!
+	</p>"""
