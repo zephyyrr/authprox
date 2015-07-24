@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/BurntSushi/toml"
+	"github.com/Sirupsen/logrus"
 	"html/template"
 	"io"
 	"os"
@@ -62,6 +63,13 @@ type pageCacheData struct {
 	LastLoadTime time.Time
 }
 
+func NewFSPages(dir string) *FSPages {
+	return &FSPages{
+		webdir: dir,
+		cache:  make(map[string]*pageCacheData),
+	}
+}
+
 func (fsp FSPages) Get(name string) Page {
 	if data, ok := fsp.cache[name]; ok {
 		//File is in cache, Check if update is necessary
@@ -76,29 +84,34 @@ func (fsp FSPages) Get(name string) Page {
 				}
 				return fsp.Get(Error404Page)
 			} else {
-				fsp.Load(data.Filename) //Modification time after last load
-				return fsp.Get(name)    //Recursive call. Should be loaded now, but might not been found.
+				fsp.Load(name)       //Modification time after last load
+				return fsp.Get(name) //Recursive call. Should be loaded now, but might not been found.
 			}
 		}
 		return data.Page
 	} else {
 		//Not loaded before. Do it.
-		filename := filepath.Join(fsp.webdir, "pages", name) + ".toml"
-		fsp.Load(filename)
+		fsp.Load(name)
 		return fsp.Get(name) //Recursive call since it is now in the cache.
 	}
 }
 
-func (fsp FSPages) Load(filename string) {
+func (fsp FSPages) Load(name string) {
 	pcd := pageCacheData{
-		Filename:     filename,
+		Filename:     filepath.Join(fsp.webdir, "pages", name) + ".toml",
 		LastLoadTime: time.Now(),
 	}
 
-	_, err := toml.DecodeFile(filename, &pcd.Page)
+	logger.WithFields(logrus.Fields{
+		"name":     name,
+		"filename": pcd.Filename,
+	}).Info("Loading page")
+
+	_, err := toml.DecodeFile(pcd.Filename, &pcd.Page)
 	if os.IsNotExist(err) {
 		pcd.NotFound = true
 	}
+	fsp.cache[name] = &pcd
 }
 
 type ConstPages map[string]Page
