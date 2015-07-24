@@ -1,8 +1,12 @@
 package main
 
 import (
+	"github.com/BurntSushi/toml"
 	"html/template"
 	"io"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 type Renderer interface {
@@ -32,17 +36,69 @@ type Pages interface {
 const (
 	MainMenuPage            = "menu"
 	LoginPage               = "login"
-	LoginSuccessPage        = "login/success"
+	LoginSuccessPage        = "login_success"
 	RegistrationPage        = "register"
-	RegistrationSuccessPage = "register/success"
+	RegistrationSuccessPage = "register_success"
 	LogoutPage              = "logout"
 	AdminPage               = "admin"
+	Error404Page            = "404"
 )
 
 type Page struct {
 	Title   template.HTML
 	Head    template.HTML
 	Content template.HTML
+}
+
+type FSPages struct {
+	webdir string
+	cache  map[string]*pageCacheData
+}
+
+type pageCacheData struct {
+	Page
+	NotFound     bool
+	Filename     string
+	LastLoadTime time.Time
+}
+
+func (fsp FSPages) Get(name string) Page {
+	if data, ok := fsp.cache[name]; ok {
+		//File is in cache, Check if update is necessary
+		finfo, err := os.Stat(data.Filename)
+		if err != nil || finfo.ModTime().After(data.LastLoadTime) {
+			if os.IsNotExist(err) {
+				if name == Error404Page {
+					return Page{ //Default to prevent infinite loops if the error page can not be loaded.
+						Title:   "404 - Page Not Found",
+						Content: "<p>Could not find neither the requested page not the proper 404 page.</p>",
+					}
+				}
+				return fsp.Get(Error404Page)
+			} else {
+				fsp.Load(data.Filename) //Modification time after last load
+				return fsp.Get(name)    //Recursive call. Should be loaded now, but might not been found.
+			}
+		}
+		return data.Page
+	} else {
+		//Not loaded before. Do it.
+		filename := filepath.Join(fsp.webdir, "pages", name) + ".toml"
+		fsp.Load(filename)
+		return fsp.Get(name) //Recursive call since it is now in the cache.
+	}
+}
+
+func (fsp FSPages) Load(filename string) {
+	pcd := pageCacheData{
+		Filename:     filename,
+		LastLoadTime: time.Now(),
+	}
+
+	_, err := toml.DecodeFile(filename, &pcd.Page)
+	if os.IsNotExist(err) {
+		pcd.NotFound = true
+	}
 }
 
 type ConstPages map[string]Page
@@ -54,8 +110,8 @@ func (cp ConstPages) Get(name string) Page {
 		return page
 	} else {
 		return Page{
-			Title:   "<code>/dev/nil</code>",
-			Head:    "",
+			Title: "<code>/dev/nil</code>",
+			Head:  "",
 			Content: `
 	<p>
 		You appear to have tried to access a page that does not exist.
