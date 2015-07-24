@@ -38,6 +38,24 @@ func main() {
 		return
 	}
 
+	selectUserManager()
+	selectPageSource()
+
+	recaptcher = recaptcha.R{
+		Secret: config.Keys.ReCaptcha,
+	}
+
+	handler := setupHandlers()
+	http.ListenAndServe(config.Address, handler)
+}
+
+func setupLogger() {
+	logger.Hooks.Add(lfshook.NewHook(lfshook.PathMap{
+		logrus.ErrorLevel: config.Logfile,
+	}))
+}
+
+func selectUserManager() {
 	switch config.Database.Type {
 	case "dummy":
 		usr_data := strings.Split(config.Database.Location, " ")
@@ -64,17 +82,4 @@ func main() {
 			}).Fatal("Unable to create database connection.")
 		}
 	}
-
-	recaptcher = recaptcha.R{
-		Secret: config.Keys.ReCaptcha,
-	}
-
-	handler := setupHandlers()
-	http.ListenAndServe(config.Address, handler)
-}
-
-func setupLogger() {
-	logger.Hooks.Add(lfshook.NewHook(lfshook.PathMap{
-		logrus.ErrorLevel: config.Logfile,
-	}))
 }

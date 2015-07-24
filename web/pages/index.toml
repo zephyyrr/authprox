@@ -1,0 +1,14 @@
+Title = "Main Menu"
+Content = """
+	Welcome to AuthProx, the Authorization Proxy
+	If you are new here, you first need to register an account <a href="/proxy/register">here</a>.
+
+	<ul class="menu">
+		<li> <a href="/proxy/login">Login</a> </li>
+		<li> <a href="/proxy/logout">Logout</a> </li>
+		<li> <a href="/proxy/register">Register</a> </li>
+		<li> <a href="/proxy/admin">Administrate</a> </li>
+	</ul>
+
+	
+"""

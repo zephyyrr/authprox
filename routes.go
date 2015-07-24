@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -22,8 +23,17 @@ var (
 )
 
 func init() {
-	pages = constPages
+
 	renderer = defaultRenderer
+}
+
+func selectPageSource() {
+	if config.WebDirectory != nil {
+		//Web directory specified. Use FSPages.
+		pages = NewFSPages(*config.WebDirectory)
+	} else {
+		pages = constPages
+	}
 }
 
 func setupHandlers() http.Handler {
@@ -51,13 +61,14 @@ func setupHandlers() http.Handler {
 		m.PathPrefix("/login").Handler(LoggingMW(http.HandlerFunc(getLogin)))
 		m.PathPrefix("/register").Handler(LoggingMW(http.HandlerFunc(getRegister)))
 		m.PathPrefix("/logout").Handler(LoggingMW(http.HandlerFunc(getLogout)))
-		if config.StaticResources != nil { //Only put up this route if we have static content. Could all be served from CDN or similar.
+		if config.WebDirectory != nil { //Only put up this route if we have static content. Could all be served from CDN or similar.
+			staticdir := filepath.Join(*config.WebDirectory, "static")
 			m.PathPrefix("/static").Handler(LoggingMW(CacheMW{RewriteMW{
-				Wrapped: http.FileServer(http.Dir(*config.StaticResources)),
+				Wrapped: http.FileServer(http.Dir(staticdir)),
 				From:    "/proxy/static/(.*)",
 				To:      "/$1",
 			}}))
-			logger.WithField("dir", *config.StaticResources).Info("Static route setup.")
+			logger.WithField("dir", staticdir).Info("Static route setup.")
 		}
 	}
 
@@ -77,7 +88,7 @@ func wildcard(r *http.Request, rm *mux.RouteMatch) bool {
 type CacheMW struct{ Wrapped http.Handler }
 
 func (c CacheMW) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("cache-control", "public,max-age:360000")
+	w.Header().Set("Cache-Control", "public, max-age:360000")
 	c.Wrapped.ServeHTTP(w, r)
 }
 

@@ -1,0 +1,6 @@
+Title = "Registration Successfull!"
+Content = """
+	<p>
+		You have successfully registered your new account.
+		<a href="/proxy/login">Continue to login page</a>
+	</p>"""
