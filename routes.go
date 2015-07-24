@@ -23,8 +23,17 @@ var (
 )
 
 func init() {
-	pages = constPages
+
 	renderer = defaultRenderer
+}
+
+func selectPageSource() {
+	if config.WebDirectory != nil {
+		//Web directory specified. Use FSPages.
+		pages = NewFSPages(*config.WebDirectory)
+	} else {
+		pages = constPages
+	}
 }
 
 func setupHandlers() http.Handler {
@@ -79,7 +88,7 @@ func wildcard(r *http.Request, rm *mux.RouteMatch) bool {
 type CacheMW struct{ Wrapped http.Handler }
 
 func (c CacheMW) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("cache-control", "public,max-age:360000")
+	w.Header().Set("Cache-Control", "public, max-age:360000")
 	c.Wrapped.ServeHTTP(w, r)
 }
 
