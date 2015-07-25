@@ -22,17 +22,20 @@ var (
 	store    sessions.Store
 )
 
-func init() {
-
-	renderer = defaultRenderer
-}
-
 func selectPageSource() {
 	if config.WebDirectory != nil {
 		//Web directory specified. Use FSPages.
 		pages = NewFSPages(*config.WebDirectory)
 	} else {
 		pages = constPages
+	}
+
+	tmplDir := ""
+	if config.WebDirectory != nil {
+		tmplDir = filepath.Join(*config.WebDirectory, "templates")
+	}
+	renderer = &TemplateRenderer{
+		Dir: tmplDir,
 	}
 }
 

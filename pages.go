@@ -5,6 +5,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -15,19 +16,56 @@ type Renderer interface {
 }
 
 type TemplateRenderer struct {
+	Dir string
 	*template.Template
 }
 
-var defaultRenderer = TemplateRenderer{
-	Template: template.New("authprox"),
+func (tr *TemplateRenderer) Render(w io.Writer, page Page) {
+	if page.Template == "" {
+		page.Template = "default"
+	}
+	if tr.Template == nil || tr.Lookup(page.Template) == nil {
+		logger.WithField("nil-template", tr.Template == nil).Debug("Needs to load template")
+		tr.Load(page.Template) //Not loaded yet!
+	}
+	tr.ExecuteTemplate(w, page.Template, page)
 }
 
-func init() {
-	template.Must(defaultRenderer.Parse(pageTemplate))
-}
+func (tr *TemplateRenderer) Load(name string) {
+	if tr.Template == nil {
+		tr.Template = template.New("default")
+		tr.Load("default")
+	}
+	if name == "default" && tr.Dir == "" {
+		logger.Info("Parsing default static template.")
+		template.Must(tr.Parse(pageTemplate)) //Load hardcoded default instead.
+		return
+	}
 
-func (tr TemplateRenderer) Render(w io.Writer, page Page) {
-	tr.Execute(w, page)
+	filename := filepath.Join(tr.Dir, name) + ".tmpl.html"
+	logger.WithFields(logrus.Fields{
+		"name":     name,
+		"filename": filename,
+	}).Info("Loading template")
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"err":      err,
+			"template": name,
+			"file":     filename,
+		}).Error("Error encountered reading template contents.")
+		return
+	}
+
+	var t *template.Template
+	if name != "default" {
+		t = tr.New(name)
+	} else {
+		t = tr.Template
+	}
+	template.Must(t.Parse(string(data)))
+
 }
 
 type Pages interface {
@@ -46,9 +84,10 @@ const (
 )
 
 type Page struct {
-	Title   template.HTML
-	Head    template.HTML
-	Content template.HTML
+	Template string
+	Title    template.HTML
+	Head     template.HTML
+	Content  template.HTML
 }
 
 type FSPages struct {
