@@ -1,7 +1,12 @@
 Title = "Login"
 Content = """
+	<p>
 	<form method="POST" action="/proxy/login">
 		<input type="text" name="username" placeholder="Username" required>
 		<input type="password" name="password" placeholder="Password" required>
+		<a href="/proxy/register">No account?</a>
 		<input type="submit" value="Login">
-	</form>"""
+	</form>
+	
+	</p>
+	"""
