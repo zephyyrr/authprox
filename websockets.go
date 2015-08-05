@@ -10,6 +10,8 @@ import (
 )
 
 //Thanks to Fatih Arslan for this. https://groups.google.com/d/msg/golang-nuts/KBx9pDlvFOc/0tR1gBRfFVMJ
+//But it turns out that it is incomplete and do not work on Firefox based browsers that sends
+// "Connection: keep-alive, upgrade" failing original tests.
 func isWebsocket(req *http.Request) bool {
 	conn_hdr := ""
 	conn_hdrs := req.Header["Connection"]
@@ -17,12 +19,22 @@ func isWebsocket(req *http.Request) bool {
 		conn_hdr = conn_hdrs[0]
 	}
 
-	upgrade_websocket := false
-	if strings.ToLower(conn_hdr) == "upgrade" {
-		upgrade_hdrs := req.Header["Upgrade"]
-		if len(upgrade_hdrs) > 0 {
-			upgrade_websocket = (strings.ToLower(upgrade_hdrs[0]) == "websocket")
+	conn_hdr_parts := strings.Split(conn_hdr, ",")
+	for _, part := range conn_hdr_parts {
+		logger.WithField("part", part).Debug("Connection part")
+		if strings.ToLower(strings.Trim(part, ", ")) == "upgrade" {
+			return hasUpgrade(req)
 		}
+	}
+	return false
+}
+
+func hasUpgrade(req *http.Request) bool {
+	upgrade_websocket := false
+
+	upgrade_hdrs := req.Header["Upgrade"]
+	if len(upgrade_hdrs) > 0 {
+		upgrade_websocket = (strings.ToLower(upgrade_hdrs[0]) == "websocket")
 	}
 
 	return upgrade_websocket

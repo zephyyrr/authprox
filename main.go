@@ -24,13 +24,13 @@ func init() {
 	logger.Out = os.Stderr
 	logger.Formatter = &logrus.TextFormatter{}
 	logger.Level = logrus.InfoLevel
-
-	flag.Parse()
-	loadConfig()
-	setupLogger()
 }
 
 func main() {
+	flag.Parse()
+	loadConfig()
+	setupLogger()
+
 	if *setup {
 		config.Keys.AuthenticationKey = securecookie.GenerateRandomKey(64)
 		config.Keys.EncryptionKey = securecookie.GenerateRandomKey(32)
