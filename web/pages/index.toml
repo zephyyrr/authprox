@@ -1,5 +1,31 @@
-Template = "menu"
 Title = "Main Menu"
+Head = """
+	<style>
+		ul.menu {
+			list-style-type: none;
+			border-radius: 5px;
+		}
+		
+		@media screen and (min-width: 400px) {
+			ul.menu li {
+				float: left;
+			}
+		}
+
+		ul.menu li a {
+			font-size: 1.5em;
+			display: inline-block;
+			width: 7em;
+			padding: 5px 20px;
+			color: black;
+			background-color: #A0A0A0;
+		}
+
+		ul.menu li a:hover {
+			background-color: #B0B0B0;
+		}
+	</style>
+"""
 Content = """
 	Welcome to AuthProx, the Authorization Proxy
 	If you are new here, you first need to register an account <a href="/proxy/register">here</a>.
@@ -8,6 +34,5 @@ Content = """
 		<li> <a href="/proxy/login">Login</a> </li>
 		<li> <a href="/proxy/logout">Logout</a> </li>
 		<li> <a href="/proxy/register">Register</a> </li>
-		<li> <a href="/proxy/admin">Administrate</a> </li>
 	</ul>
 """

@@ -15,6 +15,10 @@ html {
   font-family: 'Roboto Condensed', 'Anadale Mono', sans-serif;
 }
 
+#card {
+  overflow: auto;
+}
+
 #card, #card input {
   background-color: white;
   border: solid 1px #ddd;
